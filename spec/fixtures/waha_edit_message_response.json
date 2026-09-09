@@ -1,0 +1,18 @@
+{
+  "id": "true_15551234567@c.us_3EB0987654321098765432",
+  "_data": {
+    "Message": {
+      "protocolMessage": {
+        "key": {
+          "ID": "3EB0123456789012345678"
+        },
+        "editedMessage": {
+          "extendedTextMessage": {
+            "text": "Done"
+          }
+        },
+        "type": 14
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+require "waha/version"
+require "waha/error"
+require "waha/support"
+require "waha/transport/http_party"
+require "waha/resource"
+require "waha/resources/sessions"
+require "waha/resources/messages"
+require "waha/resources/chats"
+require "waha/resources/contacts"
+require "waha/resources/presence"
+require "waha/resources/webhooks"
+require "waha/resources/media"
+require "waha/gows"
+require "waha/webhook"
+require "waha/client"
