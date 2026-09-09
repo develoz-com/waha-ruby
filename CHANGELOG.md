@@ -30,3 +30,5 @@ and this project adheres to
   install generator for the `waha.rb` initializer.
 - Typed `Waha::Error` (operation, status, bounded redacted details) with
   provider payload redaction.
+[Unreleased]: https://github.com/develoz-com/waha-ruby/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/develoz-com/waha-ruby/releases/tag/v0.1.0
