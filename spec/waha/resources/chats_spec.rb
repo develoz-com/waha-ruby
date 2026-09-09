@@ -19,4 +19,10 @@ RSpec.describe Waha::Resources::Chats do
     expect(request.path).to eq("/api/team%2Fa%20b/chats/a%40c.us/messages")
     expect(request.query).to eq(limit: 50, "downloadMedia" => true)
   end
+
+  it "translates the last message query keyword" do
+    resource.messages(chat_id: "a@c.us", last_message_id: "msg-1", limit: nil)
+
+    expect(transport.requests.last.query).to eq("lastMessageId" => "msg-1")
+  end
 end

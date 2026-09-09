@@ -21,7 +21,7 @@ module Waha
       sort_by: "sortBy",
       sort_order: "sortOrder",
       last_message_timestamp: "lastMessageTimestamp",
-      last_message_lid: "lastMessageId",
+      last_message_id: "lastMessageId",
       contact_id: "contactId",
       phone_number: "phoneNumber"
     }.freeze

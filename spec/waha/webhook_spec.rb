@@ -47,4 +47,30 @@ RSpec.describe Waha::Webhook do
       described_class.verify!(body:, signature: "z" * expected_length, algorithm: "sha512", secret:)
     end.to raise_error(Waha::VerificationError, /malformed signature/)
   end
+
+  it "fails closed when the secret is nil" do
+    expect do
+      described_class.verify!(body:, signature:, algorithm: "sha512", secret: nil)
+    end.to raise_error(Waha::VerificationError, /secret is required/)
+  end
+
+  it "fails closed when the secret is empty" do
+    expect do
+      described_class.verify!(body:, signature:, algorithm: "sha512", secret: "")
+    end.to raise_error(Waha::VerificationError, /secret is required/)
+  end
+
+  it "fails closed when the secret is blank" do
+    expect do
+      described_class.verify!(body:, signature:, algorithm: "sha512", secret: "  ")
+    end.to raise_error(Waha::VerificationError, /secret is required/)
+  end
+
+  it "rejects an empty-key HMAC forgery attempt" do
+    forged = OpenSSL::HMAC.hexdigest("sha512", "", body)
+
+    expect do
+      described_class.verify!(body:, signature: forged, algorithm: "sha512", secret: nil)
+    end.to raise_error(Waha::VerificationError, /secret is required/)
+  end
 end

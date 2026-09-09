@@ -59,4 +59,32 @@ RSpec.describe Waha::Resources::Webhooks do
 
     expect { resource.configure(url:, events: []) }.to raise_error(Waha::ApiError, /missing config/)
   end
+
+  it "keeps value-equal webhook entries as distinct copies when updating" do
+    twin = { "policy" => "constant", "delaySeconds" => 2, "attempts" => 15 }
+    session_data = session_with_twin_webhooks(twin)
+    updated_retries = { "policy" => "constant", "delaySeconds" => 2, "attempts" => 20 }
+    transport.instance_variable_set(:@responses, [session_data, {}])
+
+    resource.configure(url:, events: "message", retries: updated_retries)
+
+    updated = transport.requests.last.body[:config]["webhooks"]
+    expect(updated).to contain_exactly(
+      hash_including("url" => "http://other.test/hook", "retries" => twin),
+      hash_including("url" => url, "retries" => updated_retries)
+    )
+    expect(updated.map { |webhook| webhook["retries"].object_id }.uniq.length).to eq(2)
+  end
+
+  def session_with_twin_webhooks(twin)
+    {
+      "name" => "team/a b",
+      "config" => {
+        "webhooks" => [
+          { "url" => url, "events" => ["message"], "retries" => twin },
+          { "url" => "http://other.test/hook", "events" => ["message"], "retries" => twin }
+        ]
+      }
+    }
+  end
 end

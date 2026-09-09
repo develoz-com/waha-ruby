@@ -30,12 +30,12 @@ Metrics/ClassLength:
 Metrics/ParameterLists:
   Exclude:
     - "lib/waha/resources/messages.rb"
-    - "lib/waha/transport/http_party.rb"
+    - "lib/waha/transport/faraday.rb"
 
 Metrics/AbcSize:
   Exclude:
     - "lib/waha/resources/messages.rb"
-    - "lib/waha/transport/http_party.rb"
+    - "lib/waha/transport/faraday.rb"
 
 Layout/LineLength:
   Exclude:

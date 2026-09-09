@@ -63,7 +63,7 @@ module Waha
         Support.value(session_data, "name") || fallback
       end
 
-      def deep_dup(value, seen = {})
+      def deep_dup(value, seen = {}.compare_by_identity)
         return value unless value.is_a?(Hash) || value.is_a?(Array)
         return seen[value] if seen.key?(value)
 
