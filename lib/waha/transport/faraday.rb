@@ -2,17 +2,20 @@
 
 require "json"
 require "uri"
-require "httparty"
+require "faraday"
 
 module Waha
   module Transport
-    class HttpParty
+    class Faraday
       JSON_HEADERS = { "Content-Type" => "application/json" }.freeze
 
       def initialize(base_url:, api_key:, timeout:)
         @base_url = base_url.to_s.delete_suffix("/")
         @api_key = api_key
         @timeout = timeout
+        @connection = ::Faraday.new do |conn|
+          conn.adapter ::Faraday.default_adapter
+        end
       end
 
       def request(**call_attributes)
@@ -36,29 +39,42 @@ module Waha
       private
 
       def dispatch_request(call_attributes)
-        ::HTTParty.public_send(
-          call_attributes.fetch(:method),
-          request_url(call_attributes.fetch(:path)),
-          **request_options(call_attributes)
-        )
+        method = call_attributes.fetch(:method)
+        url = request_url(call_attributes.fetch(:path))
+
+        @connection.public_send(method) do |req|
+          configure_request(req, url, call_attributes)
+        end
+      end
+
+      def configure_request(req, url, call_attributes)
+        req.url(url)
+        req.headers = request_headers(call_attributes[:headers])
+        req.body = request_body(call_attributes[:body])
+        req.params = call_attributes[:query] if call_attributes[:query]&.any?
+        configure_timeouts(req.options, call_attributes[:timeout])
+      end
+
+      def configure_timeouts(options, custom_timeout)
+        timeout = custom_timeout || @timeout
+        options.timeout = timeout
+        options.open_timeout = timeout
+      end
+
+      def request_headers(custom_headers)
+        default_headers.merge(custom_headers || {}).compact
+      end
+
+      def request_body(body)
+        return if body.nil?
+
+        JSON.generate(body)
       end
 
       def validated_response_mode(response)
         return response if %i[json binary].include?(response)
 
         raise ValidationError.new(operation: "request", details: "unsupported response mode")
-      end
-
-      def request_options(call_attributes)
-        options = {
-          headers: default_headers.merge(call_attributes[:headers] || {}).compact,
-          timeout: call_attributes[:timeout] || @timeout
-        }
-        body = call_attributes[:body]
-        query = call_attributes[:query]
-        options[:body] = JSON.generate(body) unless body.nil?
-        options[:query] = query unless query.nil? || query.empty?
-        options
       end
 
       def default_headers
@@ -82,10 +98,10 @@ module Waha
       end
 
       def verify_status!(response, expected_status, operation)
-        return if Array(expected_status).include?(response.code)
+        return if Array(expected_status).include?(response.status)
 
         details = response.body.to_s.empty? ? "empty provider error response" : "[REDACTED]"
-        raise ApiError.new(operation:, status: response.code, details:)
+        raise ApiError.new(operation:, status: response.status, details:)
       end
 
       def parse_response(response, format, operation)
@@ -94,7 +110,7 @@ module Waha
 
         JSON.parse(response.body)
       rescue JSON::ParserError
-        raise TransportError.new(operation:, status: response.code, details: "invalid JSON response")
+        raise TransportError.new(operation:, status: response.status, details: "invalid JSON response")
       end
     end
   end

@@ -15,7 +15,7 @@ module Waha
     def initialize(base_url:, api_key:, session: nil, timeout: 30, transport: nil)
       @base_url = base_url
       @session = session
-      @transport = transport || Transport::HttpParty.new(base_url:, api_key:, timeout:)
+      @transport = transport || Transport::Faraday.new(base_url:, api_key:, timeout:)
       @resources = {}
     end
 

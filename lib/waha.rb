@@ -3,7 +3,7 @@
 require "waha/version"
 require "waha/error"
 require "waha/support"
-require "waha/transport/http_party"
+require "waha/transport/faraday"
 require "waha/resource"
 require "waha/resources/sessions"
 require "waha/resources/messages"

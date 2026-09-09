@@ -30,7 +30,7 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |file| File.basename(file) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "httparty", "~> 0.22"
+  spec.add_dependency "faraday", ">= 2.0"
 
   spec.add_development_dependency "bundler-audit", "~> 0.9"
   spec.add_development_dependency "flay", "~> 2.14"

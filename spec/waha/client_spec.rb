@@ -11,7 +11,7 @@ RSpec.describe Waha::Client do
     expect(client.webhooks).to be_a(Waha::Resources::Webhooks)
   end
 
-  it "builds the default HTTParty transport when none is injected" do
+  it "builds the default Faraday transport when none is injected" do
     client = described_class.new(base_url: "http://waha.test", api_key: "key")
 
     response = { "name" => "default" }

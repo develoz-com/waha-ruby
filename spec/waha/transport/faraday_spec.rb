@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Waha::Transport::HttpParty do
+RSpec.describe Waha::Transport::Faraday do
   subject(:transport) { described_class.new(base_url: "http://waha.test", api_key: "secret-key", timeout: 30) }
 
   it "joins base URL and path, sends JSON defaults, and parses JSON responses" do
@@ -18,8 +18,8 @@ RSpec.describe Waha::Transport::HttpParty do
   end
 
   it "serializes request bodies and query params" do
-    stub_request(:post, "http://waha.test/api/sendText")
-      .with(body: { session: "default", chatId: "c@c.us", text: "Hi" }.to_json, query: { dry: "1" })
+    stub_request(:post, "http://waha.test/api/sendText?dry=1")
+      .with(body: { session: "default", chatId: "c@c.us", text: "Hi" }.to_json)
       .to_return(status: 201, body: { "id" => "x" }.to_json)
 
     result = transport.request(

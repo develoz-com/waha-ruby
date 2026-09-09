@@ -13,7 +13,7 @@ and this project adheres to
 ### Added
 
 - `Waha::Client` framework-agnostic SDK entry point with explicit
-  `base_url`, `api_key`, and `session` configuration.
+  `base_url`, `api_key`, and `session` configuration, powered by Faraday transport.
 - Session lifecycle API: list, get, create, start, stop, restart, logout,
   destroy, and pairing (`qr`, `request_code`).
 - Messaging API: send text/image/file/voice, edit message, mark chat seen,

@@ -20,7 +20,7 @@ Add the gem to your application:
 gem "waha-ruby"
 ```
 
-Then run `bundle install`. The only runtime dependency is `httparty`.
+Then run `bundle install`. The only runtime dependency is `faraday`.
 
 ## Quick start
 
