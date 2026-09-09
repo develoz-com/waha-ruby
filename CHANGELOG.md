@@ -8,6 +8,20 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- `Waha::Webhook.verify!` fails closed when the secret is nil, empty, or
+  blank, preventing signature forgery against unconfigured consumers.
+- Webhook comparison delegates to `OpenSSL.secure_compare` for native
+  constant-time comparison.
+- `Waha::Resources::Media#download` only accepts media URLs served by the
+  configured WAHA host; all loopback origins (`localhost`, `127.0.0.1`,
+  `::1`) rebase to the base URL, closing an SSRF and API-key exfiltration
+  vector.
+- `Waha::Resources::Webhooks` deep duplication uses identity-based
+  memoization so value-equal config entries no longer alias each other.
+- Chats message query keyword `last_message_id` maps to `lastMessageId`.
+
 ## [0.1.0] - 2026-09-09
 
 ### Added
