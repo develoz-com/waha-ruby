@@ -7,6 +7,8 @@ module Waha
     class Messages < Resource
       DATA_MEDIA_CHARS = "a-zA-Z0-9!/:[:space:]\u0023$&'()*+,;=?~_-"
       DATA_URL_PATTERN = Regexp.new("\\Adata:[#{DATA_MEDIA_CHARS}]*;base64,", Regexp::IGNORECASE)
+      DATA_URL_MIMETYPE_PATTERN = Regexp.new("\\Adata:([^;,]+);base64,", Regexp::IGNORECASE)
+      SUCCESS_STATUSES = [200, 201].freeze
 
       def send_text(chat_id:, text:, id: nil, reply_to: nil, session: nil)
         body = { session: session_name(session, "send_text"), chatId: chat_id, text: }
@@ -16,7 +18,7 @@ module Waha
           method: :post,
           path: "/api/sendText",
           operation: "send_text",
-          expected_status: 201,
+          expected_status: SUCCESS_STATUSES,
           body:
         )
       end
@@ -62,7 +64,7 @@ module Waha
           method: :post,
           path: "/api/sendSeen",
           operation: "send_seen",
-          expected_status: 201,
+          expected_status: SUCCESS_STATUSES,
           body:
         )
       end
@@ -85,36 +87,36 @@ module Waha
         )
       end
 
-      def send_image(chat_id:, file:, mimetype:, filename: nil, caption: nil, reply_to: nil, session: nil)
+      def send_image(chat_id:, file:, mimetype: nil, filename: nil, caption: nil, reply_to: nil, session: nil)
         body = file_body("send_image", { chat_id:, file:, mimetype:, filename:, caption:, reply_to:, session: })
         transport.request(
           method: :post,
           path: "/api/sendImage",
           operation: "send_image",
-          expected_status: 201,
+          expected_status: SUCCESS_STATUSES,
           body:
         )
       end
 
-      def send_file(chat_id:, file:, mimetype:, filename: nil, caption: nil, reply_to: nil, session: nil)
+      def send_file(chat_id:, file:, mimetype: nil, filename: nil, caption: nil, reply_to: nil, session: nil)
         body = file_body("send_file", { chat_id:, file:, mimetype:, filename:, caption:, reply_to:, session: })
         transport.request(
           method: :post,
           path: "/api/sendFile",
           operation: "send_file",
-          expected_status: 201,
+          expected_status: SUCCESS_STATUSES,
           body:
         )
       end
 
-      def send_voice(chat_id:, file:, mimetype:, filename: nil, reply_to: nil, convert: nil, session: nil)
+      def send_voice(chat_id:, file:, mimetype: nil, filename: nil, reply_to: nil, convert: nil, session: nil)
         body = file_body("send_voice", { chat_id:, file:, mimetype:, filename:, reply_to:, session: })
         body[:convert] = convert unless convert.nil?
         transport.request(
           method: :post,
           path: "/api/sendVoice",
           operation: "send_voice",
-          expected_status: 201,
+          expected_status: SUCCESS_STATUSES,
           body:
         )
       end
@@ -139,18 +141,37 @@ module Waha
 
       def file_payload(operation, file:, mimetype:, filename:)
         raise ValidationError.new(operation:, details: "file must be a non-empty string") if file.to_s.empty?
-        raise ValidationError.new(operation:, details: "mimetype is required") if mimetype.to_s.empty?
-
-        payload = { mimetype: }
-        payload[:filename] = filename unless filename.nil?
 
         if http_url?(file)
-          payload.merge(url: file)
+          remote_file_payload(file, mimetype, filename)
         elsif data_url?(file)
-          payload.merge(data: file.split(",", 2).last)
+          inline_file_payload(operation, file, mimetype, filename)
         else
           raise ValidationError.new(operation:, details: "file must be an http(s) URL or data URL")
         end
+      end
+
+      # WAHA detects the MIME type of remote URLs; an explicit mimetype wins.
+      def remote_file_payload(file, mimetype, filename)
+        payload = {}
+        payload[:mimetype] = mimetype unless mimetype.to_s.empty?
+        payload[:filename] = filename unless filename.nil?
+        payload.merge(url: file)
+      end
+
+      # Data URLs carry their MIME type in the prefix when none is supplied.
+      def inline_file_payload(operation, file, mimetype, filename)
+        resolved_mimetype = mimetype.to_s.empty? ? data_url_mimetype(file) : mimetype
+        raise ValidationError.new(operation:, details: "mimetype is required") if resolved_mimetype.to_s.empty?
+
+        payload = { mimetype: resolved_mimetype }
+        payload[:filename] = filename unless filename.nil?
+        payload.merge(data: file.split(",", 2).last)
+      end
+
+      def data_url_mimetype(value)
+        match = DATA_URL_MIMETYPE_PATTERN.match(value.to_s)
+        match && match[1]
       end
 
       def http_url?(value)
@@ -169,7 +190,7 @@ module Waha
           method: :post,
           path: "/api/#{endpoint}",
           operation:,
-          expected_status: 201,
+          expected_status: SUCCESS_STATUSES,
           body: { session: session_name(session, operation), chatId: chat_id }
         )
       end

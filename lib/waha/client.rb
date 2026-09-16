@@ -6,6 +6,7 @@ module Waha
       sessions: Resources::Sessions,
       messages: Resources::Messages,
       chats: Resources::Chats,
+      groups: Resources::Groups,
       contacts: Resources::Contacts,
       presence: Resources::Presence,
       webhooks: Resources::Webhooks,
@@ -18,6 +19,8 @@ module Waha
       @transport = transport || Transport::Faraday.new(base_url:, api_key:, timeout:)
       @resources = {}
     end
+
+    attr_reader :session
 
     RESOURCES.each do |name, resource_class|
       define_method(name) do

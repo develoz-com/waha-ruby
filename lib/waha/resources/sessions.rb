@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
+require "base64"
+
 module Waha
   module Resources
     class Sessions < Resource
+      WORKING_STATUS = "WORKING"
+
       def list(all: nil)
         transport.request(
           method: :get,
@@ -24,13 +28,13 @@ module Waha
       end
 
       def create(name:, start: nil, config: nil)
-        transport.request(
-          method: :post,
-          path: "/api/sessions",
-          operation: "create_session",
-          expected_status: [200, 201],
-          body: Support.compact_hash(name:, start:, config:)
-        )
+        write_session("create_session", :post, "/api/sessions", { name:, start:, config: })
+      end
+
+      def update(session: nil, name: nil, config: nil)
+        session_key = session_name(session, "update_session")
+        write_session("update_session", :put, "/api/sessions/#{segment(session_key)}",
+                      { name: name || session_key, config: })
       end
 
       def start(session: nil)
@@ -61,15 +65,27 @@ module Waha
 
       def qr(format: nil, session: nil)
         name = session_name(session, "session_qr")
-        response_format = format.nil? ? :binary : :json
         transport.request(
           method: :get,
           path: "/api/#{segment(name)}/auth/qr",
           operation: "session_qr",
           expected_status: 200,
           query: Support.compact_hash(format: format),
-          response: response_format
+          response: qr_response_format(format)
         )
+      end
+
+      # PNG bytes rendered as a browser-ready data URL.
+      def qr_data_url(session: nil)
+        png = qr(format: "image", session:)
+        "data:image/png;base64,#{Base64.strict_encode64(png.to_s)}"
+      end
+
+      # WAHA reports WORKING for an authenticated, usable session.
+      def ready?(session: nil)
+        Support.value(get(session:), "status") == WORKING_STATUS
+      rescue Waha::Error
+        false
       end
 
       def request_code(phone_number:, method: nil, session: nil)
@@ -84,6 +100,14 @@ module Waha
       end
 
       private
+
+      def write_session(operation, method, path, body)
+        transport.request(method:, path:, operation:, expected_status: [200, 201], body: Support.compact_hash(body))
+      end
+
+      def qr_response_format(format)
+        format.to_s == "image" || format.nil? ? :binary : :json
+      end
 
       def action(operation, action, session:, body: nil)
         name = session_name(session, operation)

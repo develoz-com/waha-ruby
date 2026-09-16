@@ -5,6 +5,8 @@ module Waha
     MESSAGE_LIMIT = 600
     DETAILS_LIMIT = 450
 
+    RETRYABLE_STATUSES = [408, 429].freeze
+
     attr_reader :operation, :status, :details
 
     def initialize(operation:, status: nil, details: nil)
@@ -12,6 +14,12 @@ module Waha
       @status = status
       @details = sanitize(details)
       super(build_message.slice(0, MESSAGE_LIMIT))
+    end
+
+    # Retryable failures: transport problems, WAHA server errors, rate limits, timeouts.
+    def retryable?
+      is_a?(ServerError) || is_a?(RateLimitError) || is_a?(TransportError) ||
+        RETRYABLE_STATUSES.include?(status)
     end
 
     private
@@ -30,6 +38,8 @@ module Waha
   end
 
   class ApiError < Error; end
+  class ServerError < ApiError; end
+  class RateLimitError < ApiError; end
   class TransportError < Error; end
   class ValidationError < Error; end
   class VerificationError < Error; end

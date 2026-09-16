@@ -36,6 +36,31 @@ RSpec.describe Waha::Resources::Messages do
     expect(file).to eq(url: "https://cdn.test/pic.jpg", mimetype: "image/jpeg")
   end
 
+  it "omits mimetype for remote files when none is supplied" do
+    resource.send_image(chat_id: "c@c.us", file: "https://cdn.test/pic.jpg", caption: "cap")
+
+    file = transport.requests.last.body[:file]
+    expect(file).to eq(url: "https://cdn.test/pic.jpg")
+  end
+
+  it "accepts both 200 and 201 send responses" do
+    resource.send_text(chat_id: "c@c.us", text: "Hi")
+
+    expect(transport.requests.last.expected_status).to eq([200, 201])
+  end
+
+  it "infers the mimetype from a data URL when none is supplied" do
+    resource.send_image(chat_id: "c@c.us", file: "data:image/png;base64,AAAA")
+
+    expect(transport.requests.last.body[:file]).to eq(data: "AAAA", mimetype: "image/png")
+  end
+
+  it "requires an explicit mimetype for data URLs that omit one" do
+    expect do
+      resource.send_file(chat_id: "c@c.us", file: "data:;base64,AAAA")
+    end.to raise_error(Waha::ValidationError, /mimetype is required/)
+  end
+
   it "builds data file payloads and strips data URL prefixes" do
     resource.send_voice(chat_id: "c@c.us", file: "data:audio/ogg;base64,AAAA", mimetype: "audio/ogg", convert: true)
 
@@ -48,12 +73,6 @@ RSpec.describe Waha::Resources::Messages do
     expect do
       resource.send_file(chat_id: "c@c.us", file: "not-a-url", mimetype: "text/plain")
     end.to raise_error(Waha::ValidationError, /http\(s\) URL or data URL/)
-  end
-
-  it "requires mimetype before sending media" do
-    expect do
-      resource.send_file(chat_id: "c@c.us", file: "https://cdn.test/a.txt", mimetype: "")
-    end.to raise_error(Waha::ValidationError, /mimetype is required/)
   end
 
   it "edits a message through the encoded chat path" do

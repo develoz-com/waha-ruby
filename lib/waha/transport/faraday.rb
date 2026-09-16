@@ -101,7 +101,14 @@ module Waha
         return if Array(expected_status).include?(response.status)
 
         details = response.body.to_s.empty? ? "empty provider error response" : "[REDACTED]"
-        raise ApiError.new(operation:, status: response.status, details:)
+        raise error_for(response.status).new(operation:, status: response.status, details:)
+      end
+
+      def error_for(status)
+        return RateLimitError if status == 429
+        return ServerError if status.to_i >= 500
+
+        ApiError
       end
 
       def parse_response(response, format, operation)

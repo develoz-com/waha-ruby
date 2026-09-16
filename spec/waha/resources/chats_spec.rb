@@ -4,6 +4,15 @@ RSpec.describe Waha::Resources::Chats do
   let(:transport) { SpecTransport::Fake.new }
   let(:resource) { described_class.new(transport:, session: "team/a b") }
 
+  it "lists chats for the session with compact query keywords" do
+    resource.list(limit: 10, session: "work/session")
+
+    request = transport.requests.last
+    expect(request.method).to eq(:get)
+    expect(request.path).to eq("/api/work%2Fsession/chats")
+    expect(request.query).to eq(limit: 10)
+  end
+
   it "gets overview with compact query keywords" do
     resource.overview(limit: 5, ids: ["a@c.us"])
 

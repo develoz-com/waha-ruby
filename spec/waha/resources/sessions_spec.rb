@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "base64"
+
 RSpec.describe Waha::Resources::Sessions do
   let(:transport) { SpecTransport::Fake.new }
   let(:resource) { described_class.new(transport:, session: "default") }
@@ -48,6 +50,40 @@ RSpec.describe Waha::Resources::Sessions do
     expect(default_request.response).to eq(:binary)
     expect(raw_request.response).to eq(:json)
     expect(raw_request.query).to eq(format: "raw")
+  end
+
+  it "treats an explicit image format as binary" do
+    resource.qr(format: "image", session: "team/a b")
+
+    request = transport.requests.last
+    expect(request.response).to eq(:binary)
+    expect(request.query).to eq(format: "image")
+  end
+
+  it "wraps QR bytes in a PNG data URL" do
+    resource = described_class.new(transport: SpecTransport::Fake.new(["\x89PNG"]), session: "default")
+
+    expect(resource.qr_data_url).to eq("data:image/png;base64,#{Base64.strict_encode64("\x89PNG")}")
+  end
+
+  it "reports readiness only for WORKING sessions" do
+    working = described_class.new(transport: SpecTransport::Fake.new([{ "status" => "WORKING" }]), session: "default")
+    stopped = described_class.new(transport: SpecTransport::Fake.new([{ "status" => "STOPPED" }]), session: "default")
+    failing = described_class.new(transport: SpecTransport::Fake.new([Waha::ApiError.new(operation: "get_session")]),
+                                  session: "default")
+
+    expect(working.ready?).to be(true)
+    expect(stopped.ready?).to be(false)
+    expect(failing.ready?).to be(false)
+  end
+
+  it "updates an existing session with a PUT" do
+    resource.update(session: "team/a b", config: { "client" => {} })
+
+    request = transport.requests.last
+    expect(request.method).to eq(:put)
+    expect(request.path).to eq("/api/sessions/team%2Fa%20b")
+    expect(request.body).to eq(name: "team/a b", config: { "client" => {} })
   end
 
   it "posts request-code payload with the official phoneNumber field" do

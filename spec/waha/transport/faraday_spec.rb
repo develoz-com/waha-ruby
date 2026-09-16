@@ -81,6 +81,22 @@ RSpec.describe Waha::Transport::Faraday do
     end.to raise_error(Waha::ApiError, /empty provider error response/)
   end
 
+  it "classifies 5xx responses as retryable server errors" do
+    stub_request(:get, "http://waha.test/api/boom").to_return(status: 503, body: "")
+
+    expect do
+      transport.request(method: :get, path: "/api/boom", operation: "send_text", expected_status: 200)
+    end.to raise_error(Waha::ServerError) { |error| expect(error).to be_retryable }
+  end
+
+  it "classifies 429 responses as retryable rate limits" do
+    stub_request(:get, "http://waha.test/api/limited").to_return(status: 429, body: "")
+
+    expect do
+      transport.request(method: :get, path: "/api/limited", operation: "send_text", expected_status: 200)
+    end.to raise_error(Waha::RateLimitError) { |error| expect(error).to be_retryable }
+  end
+
   it "raises TransportError for malformed successful JSON" do
     stub_request(:get, "http://waha.test/api/bad-json").to_return(status: 200, body: "{bad")
 

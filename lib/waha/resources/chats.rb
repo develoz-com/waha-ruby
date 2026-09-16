@@ -3,6 +3,17 @@
 module Waha
   module Resources
     class Chats < Resource
+      def list(session: nil, **query)
+        name = session_name(session, "list_chats")
+        transport.request(
+          method: :get,
+          path: "/api/#{segment(name)}/chats",
+          operation: "list_chats",
+          expected_status: 200,
+          query: Support.query_hash(Support.compact_hash(query))
+        )
+      end
+
       def overview(ids: nil, limit: nil, offset: nil, session: nil, **query)
         name = session_name(session, "chats_overview")
         transport.request(

@@ -39,6 +39,21 @@ client.messages.send_text(chat_id: "5511999999999@c.us", text: "Olá")
 
 Every request uses the client's default session unless a resource method accepts an explicit `session:` override. Keep credentials in environment variables or a secret manager; do not commit them.
 
+Applications that prefer process-wide defaults can configure the module once and build a fresh client per call:
+
+```ruby
+Waha.configure do |config|
+  config.base_url = ENV.fetch("WAHA_BASE_URL")
+  config.api_key = ENV["WAHA_API_KEY"]
+  config.session = ENV.fetch("WAHA_SESSION", "default")
+end
+
+Waha.configured?                 # => true
+Waha.client(session: "default")  # a new Waha::Client, never cached
+```
+
+`Waha.client` never caches instances, so per-call session overrides cannot leak across callers.
+
 ## API guide
 
 The complete v0.1 resource map, argument conventions, raw return shapes, file payloads, errors, GOWS helpers, webhook verification, and Rails integration are in [docs/api.md](docs/api.md). For setup and secret handling, see [docs/installation.md](docs/installation.md).

@@ -14,14 +14,26 @@ client = Waha::Client.new(
 
 `base_url` is required. `api_key` may be `nil` for deployments without API-key protection. `session` is the default session for resource calls. Use an explicit `session:` keyword on calls that support per-call routing; it overrides the constructor default and is not global mutable state. Calling a session-scoped method with no default session and no override raises `Waha::ValidationError`.
 
+## Module configuration
+
+`Waha.configure`, `Waha.configuration`, and `Waha.client(session:, **overrides)` are optional conveniences over `Waha::Client.new`. `Waha.client` returns a new client on every call — instances are never memoized — so session overrides never leak between callers. `Waha.configured?` reports whether `base_url` is present. Framework-neutral code can ignore the module entirely and construct `Waha::Client.new` directly.
+
+Chat ID helpers are available without a client:
+
+```ruby
+Waha.valid_chat_id?("5511999999999@c.us")  # => true (also @g.us and @lid)
+Waha.group_chat_id("120363")               # => "120363@g.us"
+```
+
 ## Resources
 
-The v0.1 client exposes these resource groups:
+The v0.2 client exposes these resource groups:
 
-- `client.sessions`: `list`, `get`, `create`, `start`, `stop`, `restart`, `logout`, `destroy`, `qr`, and `request_code`.
+- `client.sessions`: `list`, `get`, `create`, `update`, `start`, `stop`, `restart`, `logout`, `destroy`, `qr`, `qr_data_url`, `ready?`, and `request_code`.
 - `client.messages`: `send_text`, `send_image`, `send_file`, `send_voice`, `edit`, `send_seen`, `start_typing`, `stop_typing`, `new_message_id`, `list`, and `find`.
 - `client.media`: `download`.
-- `client.chats`: `overview` and `messages`.
+- `client.chats`: `list`, `overview`, and `messages`.
+- `client.groups`: `list` and `get`.
 - `client.contacts`: `list`, `get`, and `check_exists`.
 - `client.presence`: `subscribe`, `get`, and `list`.
 - `client.webhooks`: `configure`.
@@ -30,14 +42,19 @@ Exact keyword signatures are defined by the shipped client classes and should be
 
 ## File payloads
 
-File endpoints accept a payload with a `file:` URL or data string and explicit metadata:
+File endpoints accept a payload with a `file:` URL or data string. `mimetype` is optional: for data URLs it is read from the data URL prefix when omitted, and for remote URLs it is left out so WAHA detects the MIME type. Pass `mimetype:` explicitly to override detection:
 
 ```ruby
 client.messages.send_file(
   chat_id: "5511999999999@c.us",
   file: "data:application/pdf;base64,...",
-  mimetype: "application/pdf",
   filename: "invoice.pdf"
+)
+
+client.messages.send_image(
+  chat_id: "5511999999999@c.us",
+  file: "https://cdn.example.com/result.jpg",
+  mimetype: "image/jpeg"
 )
 ```
 
@@ -48,9 +65,13 @@ Use an HTTPS URL or a `data:` URL. Do not pass local filesystem paths as if they
 Failures raise subclasses of `Waha::Error`, a `StandardError` subclass with `operation`, `status`, and `details` readers:
 
 - `Waha::ApiError` — WAHA returned an unexpected HTTP status or an unusable successful response.
+- `Waha::ServerError` — a `Waha::ApiError` for 5xx responses, safe to retry.
+- `Waha::RateLimitError` — a `Waha::ApiError` for 429 responses, safe to retry.
 - `Waha::TransportError` — network, timeout, or JSON transport failures.
 - `Waha::ValidationError` — invalid client input (bad file payload, missing session, malformed URL).
 - `Waha::VerificationError` — webhook HMAC verification failed.
+
+`Waha::Error#retryable?` is true for server errors, rate limits, transport failures, and 408/429 statuses, so background jobs can branch on it:
 
 ```ruby
 begin
@@ -105,6 +126,13 @@ bin/rails generate waha:install
 ```
 
 The generator creates the `waha.rb` initializer. The adapter provides a controller concern for webhook verification (`Waha::Rails::ControllerConcern` — a private `verify_waha_webhook!` suitable for `before_action`, reading `X-Webhook-Hmac` and `X-Webhook-Hmac-Algorithm`, rewinding the request body); it does not change the core client or configure routes automatically.
+
+`Waha::Rails::SessionState` (also `Waha::SessionState` once `waha/rails` loads) memoizes session readiness in `Rails.cache`, so UI and jobs do not poll WAHA on every request:
+
+```ruby
+Waha::SessionState.active?(session_name: "default")
+# => true when the session is WORKING, cached for 30 seconds
+```
 
 ## WAHA compatibility
 

@@ -28,4 +28,18 @@ RSpec.describe Waha::Error do
     expect(error.status).to be_nil
     expect(error.message).to include("unknown")
   end
+
+  it "classifies server errors as retryable" do
+    expect(Waha::ServerError.new(operation: "send_text", status: 503)).to be_retryable
+  end
+
+  it "classifies rate limits, transport failures, and timeouts as retryable" do
+    expect(Waha::RateLimitError.new(operation: "send_text", status: 429)).to be_retryable
+    expect(Waha::TransportError.new(operation: "send_text")).to be_retryable
+    expect(described_class.new(operation: "send_text", status: 408)).to be_retryable
+  end
+
+  it "classifies client API failures as non-retryable" do
+    expect(Waha::ApiError.new(operation: "send_text", status: 404)).not_to be_retryable
+  end
 end
